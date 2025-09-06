@@ -173,97 +173,115 @@ setup_dev_directory() {
 
 # Install applications via Homebrew
 install_apps() {
-    log "${YELLOW}Preparing to install applications and development tools...${NC}"
+    log "${YELLOW}Select applications and tools to install...${NC}"
     
-    printf "\n${YELLOW}=== APPLICATIONS TO INSTALL ===${NC}\n"
-    printf "• ghostty - A fast, native, GPU-accelerated terminal emulator\n"
-    printf "• aerospace - i3-like tiling window manager for macOS\n"
-    printf "\n${YELLOW}=== CLI DEVELOPMENT TOOLS ===${NC}\n"
-    printf "• wget - Internet file retriever\n"
-    printf "• fzf - Command-line fuzzy finder\n"
-    printf "• fd - Simple, fast alternative to 'find'\n"
-    printf "• bat - Cat clone with syntax highlighting\n"
-    printf "• git-delta - Syntax-highlighting pager for git\n"
-    printf "• eza - Modern replacement for 'ls'\n"
-    printf "• thefuck - Corrects errors in previous console commands\n"
-    printf "• zoxide - Smarter cd command\n"
-    printf "• lazydocker - Terminal UI for Docker\n"
-    printf "• gh - GitHub CLI tool\n"
-    printf "• zellij - Terminal multiplexer\n"
-    printf "• serpl - Search and replace tool\n"
-    printf "• yazi - Blazing fast terminal file manager\n"
-    printf "\n${YELLOW}=== ADDITIONAL TOOLS ===${NC}\n"
-    printf "• fzf-git.sh - Git integration for fzf (enhances git workflows)\n"
-    printf "\n"
-    
-    # Ask for confirmation
-    if ! gum confirm "Proceed with automated installation of all these tools?"; then
-        log "${YELLOW}Skipped applications installation${NC}"
-        return 0
-    fi
-    
-    # Define applications and tools
-    local cask_apps=(
-        "ghostty"
-        "aerospace"
+    # Define all available options with descriptions
+    local app_options=(
+        "ghostty - A fast native GPU-accelerated terminal emulator"
+        "aerospace - i3-like tiling window manager for macOS"
+        "wget - Internet file retriever"
+        "fzf - Command-line fuzzy finder"
+        "fd - Simple fast alternative to find"
+        "bat - Cat clone with syntax highlighting"
+        "git-delta - Syntax-highlighting pager for git"
+        "eza - Modern replacement for ls"
+        "thefuck - Corrects errors in previous console commands"
+        "zoxide - Smarter cd command"
+        "lazydocker - Terminal UI for Docker"
+        "gh - GitHub CLI tool"
+        "zellij - Terminal multiplexer"
+        "serpl - Search and replace tool"
+        "yazi - Blazing fast terminal file manager"
+        "fzf-git.sh - Git integration for fzf (enhances git workflows)"
     )
     
-    local cli_tools=(
-        "wget"
-        "fzf"
-        "fd"
-        "bat"
-        "git-delta"
-        "eza"
-        "thefuck"
-        "zoxide"
-        "lazydocker"
-        "gh"
-        "zellij"
-        "serpl"
-        "yazi"
-    )
+    # Start with all options selected by default
+    local current_selection=$(IFS=','; echo "${app_options[*]}")
     
-    printf "\n${YELLOW}Starting automated installation...${NC}\n\n"
-    
-    # Install GUI applications
-    printf "${YELLOW}Installing GUI applications...${NC}\n"
-    for app in "${cask_apps[@]}"; do
-        if brew list --cask "$app" &>/dev/null; then
-            log "${GREEN}✅ $app already installed${NC}"
-        else
-            log "${YELLOW}Installing $app...${NC}"
-            if [[ "$app" == "aerospace" ]]; then
-                brew install --cask "nikitabobko/tap/aerospace" || log "${RED}Failed to install $app${NC}"
-            else
-                brew install --cask "$app" || log "${RED}Failed to install $app${NC}"
-            fi
+    while true; do
+        # Let user select what they want to install (preserving their last selection)
+        local selected_apps
+        selected_apps=$(gum choose --no-limit --selected="$current_selection" --height=20 --header "Select applications and tools to install (use space to toggle, enter when done):" "${app_options[@]}")
+        
+        # Check if user selected anything
+        if [[ -z "$selected_apps" ]]; then
+            log "${YELLOW}No applications selected, skipping installation${NC}"
+            return 0
         fi
+        
+        # Update current_selection to remember user's choice for potential "go back"
+        current_selection=$(echo "$selected_apps" | tr '\n' ',' | sed 's/,$//')
+        
+        # Show what user selected and ask for confirmation
+        printf "\n${YELLOW}You selected the following tools:${NC}\n"
+        while IFS= read -r selected_line; do
+            printf "  • %s\n" "$selected_line"
+        done <<< "$selected_apps"
+        printf "\n"
+        
+        # Ask for confirmation with options
+        local confirmation_choice
+        confirmation_choice=$(gum choose "Confirm and install these tools" "Go back to selection" "Skip this step" --header "What would you like to do?")
+        
+        case "$confirmation_choice" in
+            "Confirm and install these tools")
+                break
+                ;;
+            "Go back to selection")
+                continue
+                ;;
+            "Skip this step")
+                log "${YELLOW}Skipped applications installation${NC}"
+                return 0
+                ;;
+        esac
     done
     
-    # Install CLI tools
-    printf "\n${YELLOW}Installing CLI tools...${NC}\n"
-    for tool in "${cli_tools[@]}"; do
-        if brew list "$tool" &>/dev/null; then
-            log "${GREEN}✅ $tool already installed${NC}"
-        else
-            log "${YELLOW}Installing $tool...${NC}"
-            brew install "$tool" || log "${RED}Failed to install $tool${NC}"
-        fi
-    done
+    printf "\n${YELLOW}Starting installation of selected tools...${NC}\n\n"
     
-    # Install fzf-git.sh
-    printf "\n${YELLOW}Installing additional development tools...${NC}\n"
-    if [[ -d "$HOME/Development/fzf-git.sh" ]]; then
-        log "${GREEN}✅ fzf-git.sh already installed${NC}"
-    else
-        log "${YELLOW}Installing fzf-git.sh...${NC}"
-        cd "$HOME/Development" 2>/dev/null || mkdir -p "$HOME/Development" && cd "$HOME/Development"
-        git clone https://github.com/guillermoap/fzf-git.sh || log "${RED}Failed to install fzf-git.sh${NC}"
-        cd "$HOME"
-    fi
+    # Process selected applications
+    while IFS= read -r selected_line; do
+        # Extract app name (first word before the dash)
+        local app_name=$(echo "$selected_line" | cut -d' ' -f1)
+        
+        case "$app_name" in
+            "ghostty"|"aerospace")
+                # GUI applications (cask)
+                if brew list --cask "$app_name" &>/dev/null; then
+                    log "${GREEN}✅ $app_name already installed${NC}"
+                else
+                    log "${YELLOW}Installing $app_name...${NC}"
+                    if [[ "$app_name" == "aerospace" ]]; then
+                        brew install --cask "nikitabobko/tap/aerospace" || log "${RED}Failed to install $app_name${NC}"
+                    else
+                        brew install --cask "$app_name" || log "${RED}Failed to install $app_name${NC}"
+                    fi
+                fi
+                ;;
+            "fzf-git.sh")
+                # Special case for fzf-git.sh
+                if [[ -d "$HOME/Development/fzf-git.sh" ]]; then
+                    log "${GREEN}✅ fzf-git.sh already installed${NC}"
+                else
+                    log "${YELLOW}Installing fzf-git.sh...${NC}"
+                    cd "$HOME/Development" 2>/dev/null || mkdir -p "$HOME/Development" && cd "$HOME/Development"
+                    git clone https://github.com/guillermoap/fzf-git.sh || log "${RED}Failed to install fzf-git.sh${NC}"
+                    cd "$HOME"
+                fi
+                ;;
+            *)
+                # CLI tools
+                if brew list "$app_name" &>/dev/null; then
+                    log "${GREEN}✅ $app_name already installed${NC}"
+                else
+                    log "${YELLOW}Installing $app_name...${NC}"
+                    brew install "$app_name" || log "${RED}Failed to install $app_name${NC}"
+                fi
+                ;;
+        esac
+    done <<< "$selected_apps"
     
-    log "\n${GREEN}Applications installation completed${NC}"
+    log "\n${GREEN}Installation of selected applications completed${NC}"
 }
 
 # Setup dotfiles
