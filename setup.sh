@@ -21,13 +21,97 @@ LOG_FILE="$HOME/.dev-setup.log"
 # Create backup directory
 mkdir -p "$BACKUP_DIR"
 
-# Logging function
+# Logging and status functions
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
     printf "%b\n" "$1"
 }
 
+log_success() {
+    log "${GREEN}✓${NC} $1"
+}
+
+log_error() {
+    log "${RED}✗${NC} $1"
+}
+
+log_info() {
+    log "${INFO}$1${NC}"
+}
+
+log_warning() {
+    log "${YELLOW}$1${NC}"
+}
+
+log_skip() {
+    log "${YELLOW}Skipped: $1${NC}"
+}
+
+# Check if command/app already installed
+is_installed() {
+    local app_name="$1"
+    local install_type="${2:-formula}" # formula, cask, or directory
+    
+    case "$install_type" in
+        "cask")
+            brew list --cask "$app_name" &>/dev/null
+            ;;
+        "directory")
+            [[ -d "$app_name" ]]
+            ;;
+        *)
+            brew list "$app_name" &>/dev/null
+            ;;
+    esac
+}
+
+# Install with spinner and status
+install_with_spinner() {
+    local title="$1"
+    local command="$2"
+    local success_msg="$3"
+    local error_msg="${4:-Failed to install}"
+    
+    if gum spin --spinner dot --title "$title" --show-output -- bash -c "$command"; then
+        log_success "$success_msg"
+        return 0
+    else
+        log_error "$error_msg"
+        return 1
+    fi
+}
+
+# Install a single app with proper handling
+install_app() {
+    local app_name="$1"
+    local install_type="$2" # cask, formula, or special
+    local special_cmd="$3"   # for special installations
+    
+    case "$install_type" in
+        "cask")
+            if is_installed "$app_name" "cask"; then
+                log_success "$app_name already installed"
+            else
+                local cmd="brew install --cask \"$app_name\""
+                install_with_spinner "Installing $app_name" "$cmd" "$app_name installed successfully" "Failed to install $app_name"
+            fi
+            ;;
+        "special")
+            eval "$special_cmd"
+            ;;
+        *)
+            if is_installed "$app_name" "formula"; then
+                log_success "$app_name already installed"
+            else
+                local cmd="brew install \"$app_name\""
+                install_with_spinner "Installing $app_name" "$cmd" "$app_name installed successfully" "Failed to install $app_name"
+            fi
+            ;;
+    esac
+}
+
 # Check and setup prerequisites
+# We have to use printf since gum might not be installed
 setup_prerequisites() {
     # Silent check - only show messages if something needs to be installed
     local needs_setup=false
@@ -138,42 +222,42 @@ backup_files() {
 # Install Homebrew
 install_homebrew() {
     if command -v brew &> /dev/null; then
-        log "${GREEN}✓${NC} Homebrew already installed, skipping"
+        log_success "Homebrew already installed, skipping"
         return 0
     fi
     
-    gum spin --spinner dot --title "Installing Homebrew" -- /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    local install_cmd="/bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
     
-    # Add Homebrew to PATH for Apple Silicon Macs
-    if [[ $(uname -m) == "arm64" ]]; then
-        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-        eval "$(/opt/homebrew/bin/brew shellenv)"
+    if install_with_spinner "Installing Homebrew" "$install_cmd" "Homebrew installed successfully"; then
+        # Add Homebrew to PATH for Apple Silicon Macs
+        if [[ $(uname -m) == "arm64" ]]; then
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        fi
     fi
-    
-    log "${GREEN}Homebrew installed successfully${NC}"
 }
 
 # Install Oh My Zsh
 install_ohmyzsh() {
     if [[ -d "$HOME/.oh-my-zsh" ]]; then
-        log "${GREEN}✓${NC} Oh My Zsh already installed, skipping"
+        log_success "Oh My Zsh already installed, skipping"
         return 0
     fi
     
-    gum spin --spinner dot --title "Installing Oh My Zsh" -- sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-    log "${GREEN}Oh My Zsh installed successfully${NC}"
+    local install_cmd="sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended"
+    install_with_spinner "Installing Oh My Zsh" "$install_cmd" "Oh My Zsh installed successfully"
 }
 
 # Setup development directory
 setup_dev_directory() {
     if [[ -d "$HOME/Development" ]]; then
-        log "${GREEN}✓${NC} Development directory already exists, skipping"
+        log_success "Development directory already exists, skipping"
         return 0
     fi
     
-    log "${INFO}Setting up Development directory...${NC}"
+    log_info "Setting up Development directory"
     mkdir -p "$HOME/Development"
-    log "${GREEN}Development directory created${NC}"
+    log_success "Development directory created"
 }
 
 # Install applications via Homebrew
@@ -242,72 +326,59 @@ install_apps() {
     
     printf "\n"
     
-    # Run installation with spinner
-    gum spin --spinner dot --title "Installing selected tools" --show-output -- bash -c "
-        selected_apps='$selected_apps'
-        GREEN='\\033[0;32m'
-        RED='\\033[0;31m'
-        NC='\\033[0m'
+    # Separate apps into categories for batch installation
+    local cask_apps=()
+    local formula_apps=()
+    
+    while IFS= read -r selected_line; do
+        local app_name=$(echo "$selected_line" | cut -d' ' -f1)
         
-        log() {
-            echo \"\$(date '+%Y-%m-%d %H:%M:%S') - \$1\" >> \"$LOG_FILE\"
-            printf \"%b\\n\" \"\$1\"
-        }
-        
-        printf '\\n'
-        while IFS= read -r selected_line; do
-            app_name=\$(echo \"\$selected_line\" | cut -d' ' -f1)
-            
-            case \"\$app_name\" in
-                \"ghostty\"|\"aerospace\")
-                    if brew list --cask \"\$app_name\" &>/dev/null; then
-                        log \"\${GREEN}✓\${NC} \$app_name already installed\"
-                    else
-                        if [[ \"\$app_name\" == \"aerospace\" ]]; then
-                            if brew install --cask \"nikitabobko/tap/aerospace\" &>/dev/null; then
-                                log \"\${GREEN}✓\${NC} \$app_name installed successfully\"
-                            else
-                                log \"\${RED}✗ Failed to install \$app_name\${NC}\"
-                            fi
-                        else
-                            if brew install --cask \"\$app_name\" &>/dev/null; then
-                                log \"\${GREEN}✓\${NC} \$app_name installed successfully\"
-                            else
-                                log \"\${RED}✗ Failed to install \$app_name\${NC}\"
-                            fi
-                        fi
-                    fi
-                    ;;
-                \"fzf-git.sh\")
-                    if [[ -d \"\$HOME/Development/fzf-git.sh\" ]]; then
-                        log \"\${GREEN}✓\${NC} fzf-git.sh already installed\"
-                    else
-                        cd \"\$HOME/Development\" 2>/dev/null || mkdir -p \"\$HOME/Development\" && cd \"\$HOME/Development\"
-                        if git clone https://github.com/guillermoap/fzf-git.sh &>/dev/null; then
-                            log \"\${GREEN}✓\${NC} fzf-git.sh installed successfully\"
-                        else
-                            log \"\${RED}✗ Failed to install fzf-git.sh\${NC}\"
-                        fi
-                        cd \"\$HOME\"
-                    fi
-                    ;;
-                *)
-                    if brew list \"\$app_name\" &>/dev/null; then
-                        log \"\${GREEN}✓\${NC} \$app_name already installed\"
-                    else
-                        if brew install \"\$app_name\" &>/dev/null; then
-                            log \"\${GREEN}✓\${NC} \$app_name installed successfully\"
-                        else
-                            log \"\${RED}✗ Failed to install \$app_name\${NC}\"
-                        fi
-                    fi
-                    ;;
-            esac
-        done <<< \"\$selected_apps\"
-    "
+        case "$app_name" in
+            "ghostty"|"aerospace")
+                if ! is_installed "$app_name" "cask"; then
+                    # Map app names to their brew identifiers
+                    case "$app_name" in
+                        "aerospace") cask_apps+=("nikitabobko/tap/aerospace") ;;
+                        *) cask_apps+=("$app_name") ;;
+                    esac
+                else
+                    log_success "$app_name already installed"
+                fi
+                ;;
+            "fzf-git.sh")
+                if [[ ! -d "$HOME/Development/fzf-git.sh" ]]; then
+                    mkdir -p "$HOME/Development"
+                    cd "$HOME/Development"
+                    install_with_spinner "Installing fzf-git.sh" "git clone https://github.com/guillermoap/fzf-git.sh" "fzf-git.sh installed successfully" "Failed to install fzf-git.sh"
+                    cd "$HOME"
+                else
+                    log_success "fzf-git.sh already installed"
+                fi
+                ;;
+            *)
+                if ! is_installed "$app_name" "formula"; then
+                    formula_apps+=("$app_name")
+                else
+                    log_success "$app_name already installed"
+                fi
+                ;;
+        esac
+    done <<< "$selected_apps"
+    
+    # Batch install cask apps
+    if [[ ${#cask_apps[@]} -gt 0 ]]; then
+        local cask_list=$(IFS=' '; echo "${cask_apps[*]}")
+        install_with_spinner "Installing cask apps" "brew install --cask ${cask_list}" "Cask apps installed successfully" "Failed to install some cask apps"
+    fi
+    
+    # Batch install formula apps  
+    if [[ ${#formula_apps[@]} -gt 0 ]]; then
+        local formula_list=$(IFS=' '; echo "${formula_apps[*]}")
+        install_with_spinner "Installing formula apps" "brew install ${formula_list}" "Formula apps installed successfully" "Failed to install some formula apps"
+    fi
     
     printf "\n"
-    log "${GREEN}Installation of selected applications completed${NC}"
+    log_success "Installation of selected applications completed"
 }
 
 # Setup dotfiles
@@ -401,7 +472,7 @@ install_all() {
         if gum confirm "Proceed with: $desc?"; then
             eval "$func"
         else
-            log "${YELLOW}Skipped: $desc${NC}"
+            log_skip "$desc"
         fi
     done
     
