@@ -9,6 +9,7 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+INFO='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
@@ -104,7 +105,7 @@ setup_prerequisites() {
 
 # Backup existing files
 backup_files() {
-    log "${YELLOW}Creating backups...${NC}"
+    log "${INFO}Creating backups...${NC}"
     
     local timestamp=$(date '+%Y%m%d_%H%M%S')
     local backup_subdir="$BACKUP_DIR/backup_$timestamp"
@@ -135,8 +136,7 @@ install_homebrew() {
         return 0
     fi
     
-    log "${YELLOW}Installing Homebrew...${NC}"
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    gum spin --spinner dot --title "Installing Homebrew" -- /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     
     # Add Homebrew to PATH for Apple Silicon Macs
     if [[ $(uname -m) == "arm64" ]]; then
@@ -154,8 +154,7 @@ install_ohmyzsh() {
         return 0
     fi
     
-    log "${YELLOW}Installing Oh My Zsh...${NC}"
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    gum spin --spinner dot --title "Installing Oh My Zsh" -- sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     log "${GREEN}Oh My Zsh installed successfully${NC}"
 }
 
@@ -166,14 +165,14 @@ setup_dev_directory() {
         return 0
     fi
     
-    log "${YELLOW}Setting up Development directory...${NC}"
+    log "${INFO}Setting up Development directory...${NC}"
     mkdir -p "$HOME/Development"
     log "${GREEN}Development directory created${NC}"
 }
 
 # Install applications via Homebrew
 install_apps() {
-    log "${YELLOW}Select applications and tools to install...${NC}"
+    log "${INFO}Select applications and tools to install...${NC}"
     
     # Define all available options with descriptions
     local app_options=(
@@ -213,7 +212,7 @@ install_apps() {
         current_selection=$(echo "$selected_apps" | tr '\n' ',' | sed 's/,$//')
         
         # Show what user selected and ask for confirmation
-        printf "\n${YELLOW}You selected the following tools:${NC}\n"
+        printf "\n${INFO}You selected the following tools:${NC}\n"
         while IFS= read -r selected_line; do
             printf "  • %s\n" "$selected_line"
         done <<< "$selected_apps"
@@ -237,51 +236,74 @@ install_apps() {
         esac
     done
     
-    printf "\n${YELLOW}Starting installation of selected tools...${NC}\n\n"
+    printf "\n"
     
-    # Process selected applications
-    while IFS= read -r selected_line; do
-        # Extract app name (first word before the dash)
-        local app_name=$(echo "$selected_line" | cut -d' ' -f1)
+    # Run installation with spinner
+    gum spin --spinner dot --title "Installing selected tools" --show-output -- bash -c "
+        selected_apps='$selected_apps'
+        GREEN='\\033[0;32m'
+        RED='\\033[0;31m'
+        NC='\\033[0m'
         
-        case "$app_name" in
-            "ghostty"|"aerospace")
-                # GUI applications (cask)
-                if brew list --cask "$app_name" &>/dev/null; then
-                    log "${GREEN}✅ $app_name already installed${NC}"
-                else
-                    log "${YELLOW}Installing $app_name...${NC}"
-                    if [[ "$app_name" == "aerospace" ]]; then
-                        brew install --cask "nikitabobko/tap/aerospace" || log "${RED}Failed to install $app_name${NC}"
+        log() {
+            echo \"\$(date '+%Y-%m-%d %H:%M:%S') - \$1\" >> \"$LOG_FILE\"
+            printf \"%b\\n\" \"\$1\"
+        }
+        
+        printf '\\n'
+        while IFS= read -r selected_line; do
+            app_name=\$(echo \"\$selected_line\" | cut -d' ' -f1)
+            
+            case \"\$app_name\" in
+                \"ghostty\"|\"aerospace\")
+                    if brew list --cask \"\$app_name\" &>/dev/null; then
+                        log \"\${GREEN}✅ \$app_name already installed\${NC}\"
                     else
-                        brew install --cask "$app_name" || log "${RED}Failed to install $app_name${NC}"
+                        if [[ \"\$app_name\" == \"aerospace\" ]]; then
+                            if brew install --cask \"nikitabobko/tap/aerospace\" &>/dev/null; then
+                                log \"\${GREEN}✅ \$app_name installed successfully\${NC}\"
+                            else
+                                log \"\${RED}❌ Failed to install \$app_name\${NC}\"
+                            fi
+                        else
+                            if brew install --cask \"\$app_name\" &>/dev/null; then
+                                log \"\${GREEN}✅ \$app_name installed successfully\${NC}\"
+                            else
+                                log \"\${RED}❌ Failed to install \$app_name\${NC}\"
+                            fi
+                        fi
                     fi
-                fi
-                ;;
-            "fzf-git.sh")
-                # Special case for fzf-git.sh
-                if [[ -d "$HOME/Development/fzf-git.sh" ]]; then
-                    log "${GREEN}✅ fzf-git.sh already installed${NC}"
-                else
-                    log "${YELLOW}Installing fzf-git.sh...${NC}"
-                    cd "$HOME/Development" 2>/dev/null || mkdir -p "$HOME/Development" && cd "$HOME/Development"
-                    git clone https://github.com/guillermoap/fzf-git.sh || log "${RED}Failed to install fzf-git.sh${NC}"
-                    cd "$HOME"
-                fi
-                ;;
-            *)
-                # CLI tools
-                if brew list "$app_name" &>/dev/null; then
-                    log "${GREEN}✅ $app_name already installed${NC}"
-                else
-                    log "${YELLOW}Installing $app_name...${NC}"
-                    brew install "$app_name" || log "${RED}Failed to install $app_name${NC}"
-                fi
-                ;;
-        esac
-    done <<< "$selected_apps"
+                    ;;
+                \"fzf-git.sh\")
+                    if [[ -d \"\$HOME/Development/fzf-git.sh\" ]]; then
+                        log \"\${GREEN}✅ fzf-git.sh already installed\${NC}\"
+                    else
+                        cd \"\$HOME/Development\" 2>/dev/null || mkdir -p \"\$HOME/Development\" && cd \"\$HOME/Development\"
+                        if git clone https://github.com/guillermoap/fzf-git.sh &>/dev/null; then
+                            log \"\${GREEN}✅ fzf-git.sh installed successfully\${NC}\"
+                        else
+                            log \"\${RED}❌ Failed to install fzf-git.sh\${NC}\"
+                        fi
+                        cd \"\$HOME\"
+                    fi
+                    ;;
+                *)
+                    if brew list \"\$app_name\" &>/dev/null; then
+                        log \"\${GREEN}✅ \$app_name already installed\${NC}\"
+                    else
+                        if brew install \"\$app_name\" &>/dev/null; then
+                            log \"\${GREEN}✅ \$app_name installed successfully\${NC}\"
+                        else
+                            log \"\${RED}❌ Failed to install \$app_name\${NC}\"
+                        fi
+                    fi
+                    ;;
+            esac
+        done <<< \"\$selected_apps\"
+    "
     
-    log "\n${GREEN}Installation of selected applications completed${NC}"
+    printf "\n"
+    log "${GREEN}Installation of selected applications completed${NC}"
 }
 
 # Setup dotfiles
@@ -297,7 +319,7 @@ setup_dotfiles() {
         return 0
     fi
     
-    log "${YELLOW}Setting up dotfiles...${NC}"
+    log "${INFO}Setting up dotfiles...${NC}"
     
     # Prompt for dotfiles repository URL if not set
     if [[ "$DOTFILES_REPO" == "https://github.com/yourusername/dotfiles.git" ]]; then
@@ -394,7 +416,7 @@ uninstall_all() {
         return 0
     fi
     
-    log "${YELLOW}Starting uninstall process...${NC}"
+    log "${INFO}Starting uninstall process...${NC}"
     
     # Restore from latest backup
     if [[ -f "$BACKUP_DIR/latest_backup.txt" ]]; then
