@@ -55,9 +55,9 @@ setup_prerequisites() {
                 eval "$(/opt/homebrew/bin/brew shellenv)"
             fi
             
-            printf "${GREEN}✅ Homebrew installed successfully${NC}\n"
+            printf "${GREEN}✓${NC} Homebrew installed successfully\n"
         else
-            printf "${RED}❌ Homebrew is required for this setup. Exiting.${NC}\n"
+            printf "${RED}✗ Homebrew is required for this setup. Exiting.${NC}\n"
             printf "\n"
             printf "To install Homebrew manually, run:\n"
             printf '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"\n'
@@ -83,9 +83,9 @@ setup_prerequisites() {
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             printf "${YELLOW}Installing gum...${NC}\n"
             brew install gum
-            printf "${GREEN}✅ gum installed successfully${NC}\n"
+            printf "${GREEN}✓${NC} gum installed successfully\n"
         else
-            printf "${RED}❌ gum is required for the interactive setup. Exiting.${NC}\n"
+            printf "${RED}✗ gum is required for the interactive setup. Exiting.${NC}\n"
             printf "\n"
             printf "To install gum manually, run:\n"
             printf "brew install gum\n"
@@ -126,19 +126,19 @@ backup_files() {
         for file in \"\${files_to_backup[@]}\"; do
             if [[ -e \"\$HOME/\$file\" ]]; then
                 cp -r \"\$HOME/\$file\" '$backup_subdir/' 2>/dev/null || true
-                log \"✅ Backed up: \$file\"
+                log \"\${GREEN}✓\${NC} Backed up: \$file\"
             fi
         done
         
         echo '$backup_subdir' > '$BACKUP_DIR/latest_backup.txt'
-        log \"\${GREEN}✅ Backup created at: $backup_subdir\${NC}\"
+        log \"\${GREEN}✓\${NC} Backup created at: $backup_subdir\"
     "
 }
 
 # Install Homebrew
 install_homebrew() {
     if command -v brew &> /dev/null; then
-        log "${GREEN}✅ Homebrew already installed, skipping${NC}"
+        log "${GREEN}✓${NC} Homebrew already installed, skipping"
         return 0
     fi
     
@@ -156,7 +156,7 @@ install_homebrew() {
 # Install Oh My Zsh
 install_ohmyzsh() {
     if [[ -d "$HOME/.oh-my-zsh" ]]; then
-        log "${GREEN}✅ Oh My Zsh already installed, skipping${NC}"
+        log "${GREEN}✓${NC} Oh My Zsh already installed, skipping"
         return 0
     fi
     
@@ -167,7 +167,7 @@ install_ohmyzsh() {
 # Setup development directory
 setup_dev_directory() {
     if [[ -d "$HOME/Development" ]]; then
-        log "${GREEN}✅ Development directory already exists, skipping${NC}"
+        log "${GREEN}✓${NC} Development directory already exists, skipping"
         return 0
     fi
     
@@ -178,8 +178,6 @@ setup_dev_directory() {
 
 # Install applications via Homebrew
 install_apps() {
-    log "${INFO}Select applications and tools to install...${NC}"
-    
     # Define all available options with descriptions
     local app_options=(
         "ghostty - A fast native GPU-accelerated terminal emulator"
@@ -263,44 +261,44 @@ install_apps() {
             case \"\$app_name\" in
                 \"ghostty\"|\"aerospace\")
                     if brew list --cask \"\$app_name\" &>/dev/null; then
-                        log \"\${GREEN}✅ \$app_name already installed\${NC}\"
+                        log \"\${GREEN}✓\${NC} \$app_name already installed\"
                     else
                         if [[ \"\$app_name\" == \"aerospace\" ]]; then
                             if brew install --cask \"nikitabobko/tap/aerospace\" &>/dev/null; then
-                                log \"\${GREEN}✅ \$app_name installed successfully\${NC}\"
+                                log \"\${GREEN}✓\${NC} \$app_name installed successfully\"
                             else
-                                log \"\${RED}❌ Failed to install \$app_name\${NC}\"
+                                log \"\${RED}✗ Failed to install \$app_name\${NC}\"
                             fi
                         else
                             if brew install --cask \"\$app_name\" &>/dev/null; then
-                                log \"\${GREEN}✅ \$app_name installed successfully\${NC}\"
+                                log \"\${GREEN}✓\${NC} \$app_name installed successfully\"
                             else
-                                log \"\${RED}❌ Failed to install \$app_name\${NC}\"
+                                log \"\${RED}✗ Failed to install \$app_name\${NC}\"
                             fi
                         fi
                     fi
                     ;;
                 \"fzf-git.sh\")
                     if [[ -d \"\$HOME/Development/fzf-git.sh\" ]]; then
-                        log \"\${GREEN}✅ fzf-git.sh already installed\${NC}\"
+                        log \"\${GREEN}✓\${NC} fzf-git.sh already installed\"
                     else
                         cd \"\$HOME/Development\" 2>/dev/null || mkdir -p \"\$HOME/Development\" && cd \"\$HOME/Development\"
                         if git clone https://github.com/guillermoap/fzf-git.sh &>/dev/null; then
-                            log \"\${GREEN}✅ fzf-git.sh installed successfully\${NC}\"
+                            log \"\${GREEN}✓\${NC} fzf-git.sh installed successfully\"
                         else
-                            log \"\${RED}❌ Failed to install fzf-git.sh\${NC}\"
+                            log \"\${RED}✗ Failed to install fzf-git.sh\${NC}\"
                         fi
                         cd \"\$HOME\"
                     fi
                     ;;
                 *)
                     if brew list \"\$app_name\" &>/dev/null; then
-                        log \"\${GREEN}✅ \$app_name already installed\${NC}\"
+                        log \"\${GREEN}✓\${NC} \$app_name already installed\"
                     else
                         if brew install \"\$app_name\" &>/dev/null; then
-                            log \"\${GREEN}✅ \$app_name installed successfully\${NC}\"
+                            log \"\${GREEN}✓\${NC} \$app_name installed successfully\"
                         else
-                            log \"\${RED}❌ Failed to install \$app_name\${NC}\"
+                            log \"\${RED}✗ Failed to install \$app_name\${NC}\"
                         fi
                     fi
                     ;;
@@ -316,7 +314,7 @@ install_apps() {
 setup_dotfiles() {
     # Check if dotfiles are already set up
     if [[ -d "$DOTFILES_DIR" ]] && [[ -f "$HOME/.zshrc" ]] && grep -q "alias config=" "$HOME/.zshrc" 2>/dev/null; then
-        log "${GREEN}✅ Dotfiles already set up, skipping${NC}"
+        log "${GREEN}✓${NC} Dotfiles already set up, skipping"
         return 0
     fi
     
@@ -466,11 +464,11 @@ show_status() {
         'Development Environment Status'
     
     local components=(
-        "Homebrew:$(command -v brew &>/dev/null && echo "✅ Installed" || echo "❌ Not installed")"
-        "Oh My Zsh:$([ -d "$HOME/.oh-my-zsh" ] && echo "✅ Installed" || echo "❌ Not installed")"
-        "Development Directory:$([ -d "$HOME/Development" ] && echo "✅ Exists" || echo "❌ Not found")"
-        "Dotfiles:$([ -d "$DOTFILES_DIR" ] && echo "✅ Setup" || echo "❌ Not setup")"
-        "fzf-git.sh:$([ -d "$HOME/Development/fzf-git.sh" ] && echo "✅ Cloned" || echo "❌ Not found")"
+        "Homebrew:$(command -v brew &>/dev/null && echo "${GREEN}✓${NC} Installed" || echo "${RED}✗${NC} Not installed")"
+        "Oh My Zsh:$([ -d "$HOME/.oh-my-zsh" ] && echo "${GREEN}✓${NC} Installed" || echo "${RED}✗${NC} Not installed")"
+        "Development Directory:$([ -d "$HOME/Development" ] && echo "${GREEN}✓${NC} Exists" || echo "${RED}✗${NC} Not found")"
+        "Dotfiles:$([ -d "$DOTFILES_DIR" ] && echo "${GREEN}✓${NC} Setup" || echo "${RED}✗${NC} Not setup")"
+        "fzf-git.sh:$([ -d "$HOME/Development/fzf-git.sh" ] && echo "${GREEN}✓${NC} Cloned" || echo "${RED}✗${NC} Not found")"
     )
     
     for component in "${components[@]}"; do
