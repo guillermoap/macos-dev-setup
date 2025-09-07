@@ -105,28 +105,34 @@ setup_prerequisites() {
 
 # Backup existing files
 backup_files() {
-    log "${INFO}Creating backups...${NC}"
-    
     local timestamp=$(date '+%Y%m%d_%H%M%S')
     local backup_subdir="$BACKUP_DIR/backup_$timestamp"
-    mkdir -p "$backup_subdir"
     
-    # Files to backup
-    local files_to_backup=(
-        ".zshrc"
-        ".gitconfig"
-        ".config"
-    )
-    
-    for file in "${files_to_backup[@]}"; do
-        if [[ -e "$HOME/$file" ]]; then
-            cp -r "$HOME/$file" "$backup_subdir/" 2>/dev/null || true
-            log "Backed up: $file"
-        fi
-    done
-    
-    echo "$backup_subdir" > "$BACKUP_DIR/latest_backup.txt"
-    log "${GREEN}Backup created at: $backup_subdir${NC}"
+    gum spin --spinner dot --title "Creating backups" --show-output -- bash -c "
+        mkdir -p '$backup_subdir'
+        
+        GREEN='\\033[0;32m'
+        NC='\\033[0m'
+        
+        log() {
+            echo \"\$(date '+%Y-%m-%d %H:%M:%S') - \$1\" >> '$LOG_FILE'
+            printf \"%b\\n\" \"\$1\"
+        }
+        
+        printf '\\n'
+        
+        files_to_backup=('.zshrc' '.gitconfig' '.config')
+        
+        for file in \"\${files_to_backup[@]}\"; do
+            if [[ -e \"\$HOME/\$file\" ]]; then
+                cp -r \"\$HOME/\$file\" '$backup_subdir/' 2>/dev/null || true
+                log \"✅ Backed up: \$file\"
+            fi
+        done
+        
+        echo '$backup_subdir' > '$BACKUP_DIR/latest_backup.txt'
+        log \"\${GREEN}✅ Backup created at: $backup_subdir\${NC}\"
+    "
 }
 
 # Install Homebrew
@@ -393,6 +399,7 @@ install_all() {
         local func="${step%%:*}"
         local desc="${step##*:}"
         
+        printf "\n"
         if gum confirm "Proceed with: $desc?"; then
             eval "$func"
         else
