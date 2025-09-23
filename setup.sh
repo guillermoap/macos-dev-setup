@@ -13,7 +13,7 @@ INFO='\033[0;34m'
 NC='\033[0m' # No Color
 
 BACKUP_DIR="$HOME/.dev-setup-backups"
-DOTFILES_DIR="$HOME/.dotfiles"
+DOTFILES_DIR="$HOME/.dotfiles/.git"
 DOTFILES_REPO="https://github.com/yourusername/dotfiles.git"  # Replace with your dotfiles repo
 LOG_FILE="$HOME/.dev-setup.log"
 
@@ -67,7 +67,7 @@ install_with_spinner() {
     local success_msg="$3"
     local error_msg="${4:-Failed to install}"
     
-    if gum spin --spinner dot --title "$title" --show-output -- bash -c "$command"; then
+    if gum spin --spinner dot --title "$title" -- bash -c "$command"; then
         log_success "$success_msg"
         return 0
     else
@@ -263,13 +263,15 @@ install_apps() {
         "gh               - GitHub CLI tool"
         "ghostty          - A fast native GPU-accelerated terminal emulator"
         "git-delta        - Syntax-highlighting pager for git"
+        "gnupg            - GNU Pretty Good Privacy (PGP) package"
         "hey-desktop      - Opinionated email & calendar service"
         "lazydocker       - Terminal UI for Docker"
-        "mise             - Development environment manager (replaces asdf, nvm, etc.)"
+        "mise             - Development environment manager (replaces asdf)"
         "sst/tap/opencode - AI coding agent built for the terminal"
         "serpl            - Search and replace tool"
         "spotify          - Music streaming service"
         "thefuck          - Corrects errors in previous console commands"
+        "uv               - Python package manager"
         "wget             - Internet file retriever"
         "yazi             - Blazing fast terminal file manager"
         "zellij           - Terminal multiplexer"
@@ -282,7 +284,7 @@ install_apps() {
     while true; do
         # Let user select what they want to install (preserving their last selection)
         local selected_apps
-        selected_apps=$(gum choose --no-limit --selected="$current_selection" --height=20 --header "Select applications and tools to install (use space to toggle, enter when done):" "${app_options[@]}")
+        selected_apps=$(gum choose --no-limit --selected="$current_selection" --height=25 --header "Select applications and tools to install (use space to toggle, enter when done):" "${app_options[@]}")
         
         # Check if user selected anything
         if [[ -z "$selected_apps" ]]; then
@@ -451,7 +453,6 @@ install_all() {
     
     # Installation steps
     local steps=(
-        "install_homebrew:Install Homebrew"
         "install_ohmyzsh:Install Oh My Zsh"
         "setup_dev_directory:Setup Development Directory" 
         "install_apps:Install Applications & Tools"
