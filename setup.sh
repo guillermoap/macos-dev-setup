@@ -12,16 +12,13 @@ YELLOW='\033[1;33m'
 INFO='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configuration
 BACKUP_DIR="$HOME/.dev-setup-backups"
 DOTFILES_DIR="$HOME/.dotfiles"
 DOTFILES_REPO="https://github.com/yourusername/dotfiles.git"  # Replace with your dotfiles repo
 LOG_FILE="$HOME/.dev-setup.log"
 
-# Create backup directory
 mkdir -p "$BACKUP_DIR"
 
-# Logging and status functions
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
     printf "%b\n" "$1"
@@ -47,7 +44,6 @@ log_skip() {
     log "${YELLOW}Skipped: $1${NC}"
 }
 
-# Check if command/app already installed
 is_installed() {
     local app_name="$1"
     local install_type="${2:-formula}" # formula, cask, or directory
@@ -65,7 +61,6 @@ is_installed() {
     esac
 }
 
-# Install with spinner and status
 install_with_spinner() {
     local title="$1"
     local command="$2"
@@ -81,7 +76,6 @@ install_with_spinner() {
     fi
 }
 
-# Install a single app with proper handling
 install_app() {
     local app_name="$1"
     local install_type="$2" # cask, formula, or special
@@ -110,7 +104,6 @@ install_app() {
     esac
 }
 
-# Check and setup prerequisites
 # We have to use printf since gum might not be installed
 setup_prerequisites() {
     # Silent check - only show messages if something needs to be installed
@@ -187,7 +180,6 @@ setup_prerequisites() {
     fi
 }
 
-# Backup existing files
 backup_files() {
     local timestamp=$(date '+%Y%m%d_%H%M%S')
     local backup_subdir="$BACKUP_DIR/backup_$timestamp"
@@ -219,7 +211,6 @@ backup_files() {
     "
 }
 
-# Install Homebrew
 install_homebrew() {
     if command -v brew &> /dev/null; then
         log_success "Homebrew already installed, skipping"
@@ -237,7 +228,6 @@ install_homebrew() {
     fi
 }
 
-# Install Oh My Zsh
 install_ohmyzsh() {
     if [[ -d "$HOME/.oh-my-zsh" ]]; then
         log_success "Oh My Zsh already installed, skipping"
@@ -248,7 +238,6 @@ install_ohmyzsh() {
     install_with_spinner "Installing Oh My Zsh" "$install_cmd" "Oh My Zsh installed successfully"
 }
 
-# Setup development directory
 setup_dev_directory() {
     if [[ -d "$HOME/Development" ]]; then
         log_success "Development directory already exists, skipping"
@@ -260,9 +249,7 @@ setup_dev_directory() {
     log_success "Development directory created"
 }
 
-# Install applications via Homebrew
 install_apps() {
-    # Define all available options with descriptions
     local app_options=(
         "aerospace        - i3-like tiling window manager for macOS"
         "bat              - Cat clone with syntax highlighting"
@@ -388,7 +375,6 @@ install_apps() {
     log_success "Installation of selected applications completed"
 }
 
-# Setup dotfiles
 setup_dotfiles() {
     # Check if dotfiles are already set up
     if [[ -d "$DOTFILES_DIR" ]] && [[ -f "$HOME/.zshrc" ]] && grep -q "alias config=" "$HOME/.zshrc" 2>/dev/null; then
@@ -438,23 +424,24 @@ setup_dotfiles() {
     # Set git config for dotfiles
     config config --local status.showUntrackedFiles no
     
-    # Add alias to shell config
     local shell_config=""
     if [[ -f "$HOME/.zshrc" ]]; then
         shell_config="$HOME/.zshrc"
     elif [[ -f "$HOME/.bashrc" ]]; then
         shell_config="$HOME/.bashrc"
     fi
-    
+
+    # Check AFTER checkout since .zshrc might now contain the alias
     if [[ -n "$shell_config" ]] && ! grep -q "alias config=" "$shell_config"; then
         echo 'alias config="/usr/bin/git --git-dir=$HOME/.dotfiles/.git/ --work-tree=$HOME"' >> "$shell_config"
         log "Added config alias to $shell_config"
-    fi
-    
+    else
+        log "Config alias already exists in $shell_config"
+    fi    
+
     log "${GREEN}Dotfiles setup completed${NC}"
 }
 
-# Main installation function
 install_all() {
     gum style --foreground 212 --border-foreground 212 --border double \
         --align center --width 50 --margin "1 2" --padding "2 4" \
@@ -488,7 +475,6 @@ install_all() {
         'Installation Complete!' 'Please restart your terminal or run: source ~/.zshrc'
 }
 
-# Uninstall function
 uninstall_all() {
     gum style --foreground 196 --border-foreground 196 --border double \
         --align center --width 50 --margin "1 2" --padding "2 4" \
@@ -535,7 +521,6 @@ uninstall_all() {
     log "${GREEN}Uninstall completed${NC}"
 }
 
-# Show status
 show_status() {
     gum style --foreground 212 --border-foreground 212 --border double \
         --align center --width 50 --margin "1 2" --padding "2 4" \
@@ -564,7 +549,6 @@ show_status() {
     fi
 }
 
-# Main script logic
 main() {
     setup_prerequisites
     
@@ -587,5 +571,4 @@ main() {
     esac
 }
 
-# Run main function
 main
