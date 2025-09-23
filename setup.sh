@@ -264,23 +264,28 @@ setup_dev_directory() {
 install_apps() {
     # Define all available options with descriptions
     local app_options=(
-        "aerospace    - i3-like tiling window manager for macOS"
-        "bat          - Cat clone with syntax highlighting"
-        "eza          - Modern replacement for ls"
-        "fd           - Simple fast alternative to find"
-        "fzf          - Command-line fuzzy finder"
-        "fzf-git.sh   - Git integration for fzf (enhances git workflows)"
-        "gh           - GitHub CLI tool"
-        "ghostty      - A fast native GPU-accelerated terminal emulator"
-        "git-delta    - Syntax-highlighting pager for git"
-        "lazydocker   - Terminal UI for Docker"
-        "mise         - Development environment manager (replaces asdf, nvm, etc.)"
-        "serpl        - Search and replace tool"
-        "thefuck      - Corrects errors in previous console commands"
-        "wget         - Internet file retriever"
-        "yazi         - Blazing fast terminal file manager"
-        "zellij       - Terminal multiplexer"
-        "zoxide       - Smarter cd command"
+        "aerospace        - i3-like tiling window manager for macOS"
+        "bat              - Cat clone with syntax highlighting"
+        "brave-browser    - Privacy focused browser"
+        "datagrip         - Database and SQL IDE"
+        "eza              - Modern replacement for ls"
+        "fd               - Simple fast alternative to find"
+        "fzf              - Command-line fuzzy finder"
+        "fzf-git.sh       - Git integration for fzf (enhances git workflows)"
+        "gh               - GitHub CLI tool"
+        "ghostty          - A fast native GPU-accelerated terminal emulator"
+        "git-delta        - Syntax-highlighting pager for git"
+        "hey-desktop      - Opinionated email & calendar service"
+        "lazydocker       - Terminal UI for Docker"
+        "mise             - Development environment manager (replaces asdf, nvm, etc.)"
+        "sst/tap/opencode - AI coding agent built for the terminal"
+        "serpl            - Search and replace tool"
+        "spotify          - Music streaming service"
+        "thefuck          - Corrects errors in previous console commands"
+        "wget             - Internet file retriever"
+        "yazi             - Blazing fast terminal file manager"
+        "zellij           - Terminal multiplexer"
+        "zoxide           - Smarter cd command"
     )
     
     # Start with all options selected by default
@@ -335,7 +340,7 @@ install_apps() {
         local app_name=$(echo "$selected_line" | cut -d' ' -f1)
         
         case "$app_name" in
-            "ghostty"|"aerospace")
+            "ghostty"|"aerospace"|"brave-browser"|"hey-desktop"|"datagrip"|"spotify")
                 if ! is_installed "$app_name" "cask"; then
                     # Map app names to their brew identifiers
                     case "$app_name" in
