@@ -267,6 +267,7 @@ install_apps() {
         "aerospace        - i3-like tiling window manager for macOS"
         "bat              - Cat clone with syntax highlighting"
         "brave-browser    - Privacy focused browser"
+        "btop             - Terminal based resource monitor"
         "datagrip         - Database and SQL IDE"
         "eza              - Modern replacement for ls"
         "fd               - Simple fast alternative to find"
